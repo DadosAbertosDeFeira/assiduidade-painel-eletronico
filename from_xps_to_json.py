@@ -1,5 +1,6 @@
+import json
 import re
-from pprint import pprint
+from pathlib import Path
 
 import fitz
 
@@ -15,11 +16,13 @@ def extract_session_and_date(line):
     begin_session_date = "Dia : "
     index_begin_session_date = line.find(begin_session_date)
     if index_begin_session_date != -1:
-        session_date = line[len(begin_session_date)+index_begin_session_date:]
+        session_date = line[len(begin_session_date) + index_begin_session_date :]
     begin_session = "Reunião : "
     index_begin_session = line.find(begin_session)
     if index_begin_session != -1:
-        session = line[len(begin_session)+index_begin_session:index_begin_session_date]
+        session = line[
+            len(begin_session) + index_begin_session : index_begin_session_date
+        ]
     return session.strip(), session_date.strip()
 
 
@@ -57,12 +60,13 @@ def extract_attendance(lines):
             info["name"] = " ".join(elements)
             attendance[key].append(info)
         else:
-            matches = re.findall(r'(\w+)\s:\s(\d+)', line.strip())
+            matches = re.findall(r"(\w+)\s:\s(\d+)", line.strip())
             attendance[key] = {
                 "attending": matches[0][1],
                 "absent": matches[1][1],
                 "justified": matches[2][1],
             }
+
     return attendance
 
 
@@ -76,12 +80,33 @@ def parse_attendance_report(text):
         "date": session_date,
         "attendance": extract_attendance(lines[4:-4]),
         "report_generated_by": lines[-3].strip(),
-        "report_generated_at": lines[-2].strip()
+        "report_generated_at": lines[-2].strip(),
     }
     return attendance
 
 
 if __name__ == "__main__":
-    raw_text = from_xps_to_text("data/example-2021-1ª SESSÃO ORDINÁRIA.xps")
-    attendance = parse_attendance_report(raw_text)
-    pprint(attendance)
+    root = "data/2021-05-01"
+    result_folder = Path(f"{root}/results")
+    result_folder.mkdir(exist_ok=True)
+    write = True
+    for path in Path(root).resolve().glob("**/*.xps"):
+        year = path.parts[-3]
+        session_type = path.parts[-2]
+        title = path.parts[-1].replace(".xps", "")
+        try:
+            raw_text = from_xps_to_text(path)
+        except Exception as e:
+            print(f"Erro ao extrair texto ({e}): {path}")
+        try:
+            attendance = parse_attendance_report(raw_text)
+        except Exception as e:
+            print(f"Erro ao parsear texto ({e}): {path}")
+
+        text_path = result_folder / year
+        text_path.mkdir(parents=True, exist_ok=True)
+        if write:
+            (text_path / f"{session_type}-{title}.txt").write_text(raw_text)
+            (text_path / f"{session_type}-{title}.json").write_text(
+                json.dumps(attendance, indent=4)
+            )
