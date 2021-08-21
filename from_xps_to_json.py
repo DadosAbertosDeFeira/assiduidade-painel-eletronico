@@ -1,9 +1,12 @@
+import re
+from pprint import pprint
+
 import fitz
 
 
 def from_xps_to_text(filepath):
     doc = fitz.open(filepath)
-    return [page.get_text("text") for page in doc]
+    return "".join(page.get_text("text") for page in doc)
 
 
 def extract_session_and_date(line):
@@ -21,26 +24,45 @@ def extract_session_and_date(line):
 
 
 def extract_attendance(lines):
-    if not (lines[0].endswith("---") and lines[-1].endswith("---")):
-        return {}
-    attendance = {
-        "city_councils": {
-            "attending": [
-                {"name": "", "party": ""},
-            ],
-            "absent": [
-                {"name": "", "party": ""},
-            ],
-            "justified": [
-                {"name": "", "party": ""},
-            ],
-        },
-        "report_from_text": {
-            "attending": "21",
-            "absent": "0",
-            "justified": "0",
-        }
-    }
+    attendance = {}
+    if not (lines[0].endswith("___") and lines[-1].endswith("___")):
+        return attendance
+    lines.pop(0)
+    lines.pop()
+
+    key = "attending"
+    attendance[key] = []
+    for line in lines:
+        if "Nome Parlamentar" in line:
+            continue
+        elif "Ausências" in line:
+            key = "absent"
+            attendance[key] = []
+            continue
+        elif "Justificados" in line:
+            key = "justified"
+            attendance[key] = []
+            continue
+        elif "Totalização" in line:
+            key = "report_from_text"
+            continue
+
+        if key != "report_from_text":
+            info = {}
+            elements = line.split()
+            elements.pop(0)  # remove código
+            if key == "justified":
+                info["text"] = elements.pop()
+            info["party"] = elements.pop()
+            info["name"] = " ".join(elements)
+            attendance[key].append(info)
+        else:
+            matches = re.findall(r'(\w+)\s:\s(\d+)', line.strip())
+            attendance[key] = {
+                "attending": matches[0][1],
+                "absent": matches[1][1],
+                "justified": matches[2][1],
+            }
     return attendance
 
 
@@ -53,12 +75,13 @@ def parse_attendance_report(text):
         "session": session,
         "date": session_date,
         "attendance": extract_attendance(lines[4:-4]),
-        "president": lines[-3].strip(),
+        "report_generated_by": lines[-3].strip(),
         "report_generated_at": lines[-2].strip()
     }
     return attendance
 
 
 if __name__ == "__main__":
-    text = from_xps_to_text("data/2021/SESSÕES ORDINÁRIA/1ª SESSÃO ORDINÁRIA.xps")
-    attendance = parse_attendance_report(text)
+    raw_text = from_xps_to_text("data/example-2021-1ª SESSÃO ORDINÁRIA.xps")
+    attendance = parse_attendance_report(raw_text)
+    pprint(attendance)
