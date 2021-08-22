@@ -46,6 +46,10 @@ def extract_attendance(lines):
             key = "justified"
             attendance[key] = []
             continue
+        elif "Recomposição" in line:
+            key = "rearrangement"
+            attendance[key] = []
+            continue
         elif "Totalização" in line:
             key = "report_from_text"
             continue
@@ -53,20 +57,21 @@ def extract_attendance(lines):
         if key != "report_from_text":
             info = {}
             elements = line.split()
-            elements.pop(0)  # remove código
-            if key == "justified":
+            if key in {"attending", "rearrangement"}:
+                elements.pop(0)  # remove código
+            elif key == "justified":
                 info["text"] = elements.pop()
             info["party"] = elements.pop()
             info["name"] = " ".join(elements)
             attendance[key].append(info)
         else:
             matches = re.findall(r"(\w+)\s:\s(\d+)", line.strip())
-            attendance[key] = {
-                "attending": matches[0][1],
-                "absent": matches[1][1],
-                "justified": matches[2][1],
-            }
-
+            if matches:
+                attendance[key] = {
+                    "attending": matches[0][1],
+                    "absent": matches[1][1],
+                    "justified": matches[2][1],
+                }
     return attendance
 
 
