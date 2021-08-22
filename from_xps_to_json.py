@@ -91,7 +91,7 @@ def parse_attendance_report(text):
 
 
 if __name__ == "__main__":
-    root = "data/2021-05-01"
+    root = "data/2021-05-01"  # ou "data/examples"
     result_folder = Path(f"{root}/results")
     result_folder.mkdir(exist_ok=True)
     write = True
@@ -99,6 +99,7 @@ if __name__ == "__main__":
         year = path.parts[-3]
         session_type = path.parts[-2]
         title = path.parts[-1].replace(".xps", "")
+        attendance = {}
         try:
             raw_text = from_xps_to_text(path)
         except Exception as e:
