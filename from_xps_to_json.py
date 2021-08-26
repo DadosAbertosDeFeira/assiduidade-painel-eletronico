@@ -55,14 +55,11 @@ def extract_attendance(lines):
             continue
 
         if key != "report_from_text":
-            info = {}
-            elements = line.split()
+            line = line.strip()
+            info = {"name": line[:31].strip(), "party": line[31:42].strip(), "text": line[42:].strip()}
             if key in {"attending", "rearrangement"}:
-                elements.pop(0)  # remove código
-            elif key == "justified":
-                info["text"] = elements.pop()
-            info["party"] = elements.pop()
-            info["name"] = " ".join(elements)
+                info["name"] = info["name"][3:]  # remove código
+
             attendance[key].append(info)
         else:
             matches = re.findall(r"(\w+)\s:\s(\d+)", line.strip())
